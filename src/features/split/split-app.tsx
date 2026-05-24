@@ -52,6 +52,29 @@ const navItems: Array<{ id: View; label: string; icon: typeof Calculator }> = [
   { id: "data", label: "Data", icon: ArrowDownToLine }
 ];
 
+const AVATAR_COLORS = [
+  "bg-teal-100 text-teal-800",
+  "bg-amber-100 text-amber-800",
+  "bg-violet-100 text-violet-800",
+  "bg-rose-100 text-rose-800",
+  "bg-sky-100 text-sky-800"
+] as const;
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + hash * 31;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 export function SplitApp() {
   const [ledger, setLedger] = useState<Ledger>(() => createEmptyLedger());
   const [view, setView] = useState<View>("overview");
@@ -148,11 +171,21 @@ export function SplitApp() {
   }
 
   return (
-    <main className="min-h-screen pb-24 lg:pb-0">
+    <main className="min-h-screen pb-[max(96px,calc(80px+env(safe-area-inset-bottom)))] lg:pb-0">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-8">
         {/* Header */}
         <header className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Split</h1>
+          <h1 className="text-xl font-bold tracking-[-0.04em]">
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(135deg, hsl(174 68% 24%), hsl(174 55% 36%))"
+              }}
+            >
+              split
+            </span>
+          </h1>
           <div className="flex items-center gap-2">
             <Select
               aria-label="Currency"
@@ -182,7 +215,7 @@ export function SplitApp() {
         {(notice || error) && (
           <div
             className={cn(
-              "rounded-lg px-4 py-2.5 text-sm font-medium",
+              "animate-list-item rounded-lg px-4 py-2.5 text-sm font-medium",
               error
                 ? "bg-destructive/10 text-destructive"
                 : "bg-primary/10 text-primary"
@@ -195,8 +228,8 @@ export function SplitApp() {
         )}
 
         <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-          {/* Desktop sidebar nav */}
-          <nav className="hidden lg:flex lg:flex-col lg:gap-1 lg:rounded-xl lg:border lg:bg-card lg:p-2 lg:shadow-sm lg:h-fit">
+          {/* Desktop sidebar nav — frosted glass */}
+          <nav className="hidden lg:flex lg:flex-col lg:gap-1 lg:rounded-lg lg:border lg:border-border/60 lg:bg-card/70 lg:backdrop-blur-md lg:p-2 lg:shadow-card lg:h-fit">
             {navItems.map((item) => (
               <NavButton
                 key={item.id}
@@ -245,9 +278,12 @@ export function SplitApp() {
         </div>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-10 border-t bg-card/95 px-2 py-1.5 shadow-lg backdrop-blur lg:hidden">
-        <div className="mx-auto grid max-w-sm grid-cols-4">
+      {/* Mobile bottom nav — glassmorphism */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 bg-card/80 backdrop-blur-xl backdrop-saturate-150 lg:hidden"
+        style={{ boxShadow: "var(--shadow-nav, 0 -1px 0 hsl(36 15% 86%), 0 -8px 24px hsl(222 24% 10% / 0.06))" }}
+      >
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
           {navItems.map((item) => (
             <NavButton
               key={item.id}
@@ -280,18 +316,24 @@ function NavButton({
     return (
       <button
         className={cn(
-          "flex flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors relative",
+          "relative flex flex-col items-center gap-1 rounded-xl py-2 px-1 min-h-[56px]",
+          "text-[10px] font-semibold tracking-wide uppercase transition-all duration-200 touch-manipulation",
           active ? "text-primary" : "text-muted-foreground"
         )}
         aria-current={active ? "page" : undefined}
         onClick={onClick}
         type="button"
       >
-        <Icon className="h-5 w-5" />
-        {item.label}
         {active && (
-          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-primary" />
+          <span className="absolute top-1.5 left-1/2 -translate-x-1/2 h-8 w-12 rounded-full bg-primary/12 transition-all duration-300" />
         )}
+        <Icon
+          className={cn(
+            "relative h-5 w-5 transition-transform duration-200",
+            active && "scale-110"
+          )}
+        />
+        <span className="relative leading-none">{item.label}</span>
       </button>
     );
   }
@@ -299,16 +341,21 @@ function NavButton({
   return (
     <button
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150",
         active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          ? "bg-primary/12 text-primary font-semibold shadow-[inset_0_0_0_1px_hsl(174_68%_24%/0.2)]"
+          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
       )}
       aria-current={active ? "page" : undefined}
       onClick={onClick}
       type="button"
     >
-      <Icon className="h-4 w-4" />
+      <Icon
+        className={cn(
+          "shrink-0 h-4 w-4 transition-all duration-200",
+          active && "text-primary"
+        )}
+      />
       {item.label}
     </button>
   );
@@ -333,6 +380,20 @@ function buildActivityItems(ledger: Ledger): ActivityItem[] {
     }))
   ];
   return items.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+}
+
+function WidgetLabel({ color, children }: { color?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className="h-2 w-2 rounded-full shrink-0"
+        style={{ backgroundColor: color ?? "hsl(var(--primary))" }}
+      />
+      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        {children}
+      </span>
+    </div>
+  );
 }
 
 function Overview({
@@ -360,27 +421,45 @@ function Overview({
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-4">
-        {/* Stats row */}
-        <div className="grid grid-cols-3 divide-x rounded-xl border bg-card shadow-sm">
-          <div className="px-4 py-3">
-            <p className="text-xs text-muted-foreground">Total spent</p>
-            <p className="mt-1 text-lg font-semibold tracking-tight truncate">
-              {formatMinor(totalSpent, ledger.currency)}
-            </p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs text-muted-foreground">People</p>
-            <p className="mt-1 text-lg font-semibold">{ledger.people.length}</p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs text-muted-foreground">Expenses</p>
-            <p className="mt-1 text-lg font-semibold">{ledger.expenses.length}</p>
+        {/* Stats bar — gradient border + ambient glow */}
+        <div
+          className="rounded-lg p-[1px]"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, hsl(174 68% 24% / 0.4), hsl(36 15% 86%), hsl(28 90% 55% / 0.2))"
+          }}
+        >
+          <div className="relative grid grid-cols-3 divide-x rounded-[calc(var(--radius)-1px)] overflow-hidden bg-gradient-to-b from-card to-[hsl(36_15%_98%)]">
+            {/* Ambient glow */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 h-24 w-48 rounded-full bg-primary/15 blur-2xl" />
+            </div>
+            <div className="relative px-4 py-4 sm:py-5 bg-gradient-to-br from-primary/8 to-primary/3">
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                Total spent
+              </p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold tracking-tight tabular-amount truncate">
+                {formatMinor(totalSpent, ledger.currency)}
+              </p>
+            </div>
+            <div className="relative px-4 py-4 sm:py-5">
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                People
+              </p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold">{ledger.people.length}</p>
+            </div>
+            <div className="relative px-4 py-4 sm:py-5">
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                Expenses
+              </p>
+              <p className="mt-1 text-xl sm:text-2xl font-bold">{ledger.expenses.length}</p>
+            </div>
           </div>
         </div>
 
         {/* Onboarding prompt */}
         {(ledger.people.length === 0 || ledger.expenses.length === 0) && (
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="border-primary/25 bg-gradient-to-br from-primary/6 to-transparent">
             <CardContent className="space-y-3 p-4">
               <div>
                 <p className="font-semibold">
@@ -420,41 +499,57 @@ function Overview({
         {/* Balances */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Balances</CardTitle>
+            <WidgetLabel>Balances</WidgetLabel>
           </CardHeader>
           <CardContent className="pt-0">
             {balances.length === 0 ? (
               <EmptyState message="Add people to start tracking balances." />
             ) : (
               <div className="divide-y">
-                {balances.map((balance) => (
-                  <div
-                    key={balance.personId}
-                    className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">
-                        {peopleById.get(balance.personId)?.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Paid {formatMinor(balance.paidMinor, ledger.currency)} · Owes {formatMinor(balance.owedMinor, ledger.currency)}
-                      </p>
-                    </div>
-                    <p
+                {balances.map((balance, index) => {
+                  const name = peopleById.get(balance.personId)?.name ?? "?";
+                  return (
+                    <div
+                      key={balance.personId}
                       className={cn(
-                        "text-sm font-semibold shrink-0",
-                        balance.netMinor > 0 && "text-primary",
-                        balance.netMinor < 0 && "text-destructive",
-                        balance.netMinor === 0 && "text-muted-foreground"
+                        "flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 animate-list-item",
+                        `stagger-${(index % 4) + 1}`
                       )}
                     >
-                      <BalanceStatus
-                        amountMinor={balance.netMinor}
-                        currency={ledger.currency}
-                      />
-                    </p>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={cn(
+                            "h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold leading-none",
+                            getAvatarColor(name)
+                          )}
+                        >
+                          {getInitials(name)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Paid {formatMinor(balance.paidMinor, ledger.currency)} · Owes{" "}
+                            {formatMinor(balance.owedMinor, ledger.currency)}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={cn(
+                          "shrink-0 rounded-full px-3 py-1 text-sm font-bold tabular-amount",
+                          balance.netMinor > 0 && "bg-primary/10 text-primary",
+                          balance.netMinor < 0 && "bg-destructive/10 text-destructive",
+                          balance.netMinor === 0 &&
+                            "bg-muted text-muted-foreground text-xs font-semibold"
+                        )}
+                      >
+                        <BalanceStatus
+                          amountMinor={balance.netMinor}
+                          currency={ledger.currency}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -463,16 +558,22 @@ function Overview({
         {/* Recent activity */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent activity</CardTitle>
+            <WidgetLabel color="hsl(28 90% 55%)">Recent activity</WidgetLabel>
           </CardHeader>
           <CardContent className="pt-0">
             {recentActivity.length === 0 ? (
               <EmptyState message="Add an expense to see how each split is calculated." />
             ) : (
               <div className="divide-y">
-                {recentActivity.map((item) =>
+                {recentActivity.map((item, index) =>
                   item.kind === "expense" ? (
-                    <div key={item.entry.id} className="py-3 first:pt-0 last:pb-0">
+                    <div
+                      key={item.entry.id}
+                      className={cn(
+                        "py-3 first:pt-0 last:pb-0 animate-list-item",
+                        `stagger-${(index % 4) + 1}`
+                      )}
+                    >
                       <ExpenseBreakdown
                         expense={item.entry}
                         ledger={ledger}
@@ -480,7 +581,13 @@ function Overview({
                       />
                     </div>
                   ) : (
-                    <div key={item.entry.id} className="py-3 first:pt-0 last:pb-0">
+                    <div
+                      key={item.entry.id}
+                      className={cn(
+                        "py-3 first:pt-0 last:pb-0 animate-list-item",
+                        `stagger-${(index % 4) + 1}`
+                      )}
+                    >
                       <PaymentRow
                         payment={item.entry}
                         ledger={ledger}
@@ -495,35 +602,52 @@ function Overview({
         </Card>
       </div>
 
-      {/* Suggested settlements */}
-      <Card className="xl:h-fit">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Settlements</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {settlements.length === 0 ? (
-            <EmptyState message="No payments needed yet." />
-          ) : (
-            <div className="divide-y">
-              {settlements.map((settlement) => (
-                <div
-                  key={`${settlement.fromPersonId}-${settlement.toPersonId}`}
-                  className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <p className="text-sm font-medium truncate">
-                    {peopleById.get(settlement.fromPersonId)?.name}
-                    <ArrowRight className="inline-block mx-1.5 h-3.5 w-3.5 text-muted-foreground" />
-                    {peopleById.get(settlement.toPersonId)?.name}
-                  </p>
-                  <p className="text-sm font-semibold shrink-0">
-                    {formatMinor(settlement.amountMinor, ledger.currency)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Suggested settlements — gradient border */}
+      <div
+        className="rounded-lg p-[1px] xl:h-fit"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, hsl(28 90% 55% / 0.35), hsl(36 15% 86%), hsl(174 68% 24% / 0.2))"
+        }}
+      >
+        <Card className="rounded-[calc(var(--radius)-1px)] shadow-none border-0">
+          <CardHeader className="pb-3">
+            <WidgetLabel color="hsl(28 90% 55%)">Settlements</WidgetLabel>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {settlements.length === 0 ? (
+              <EmptyState message="No payments needed yet." />
+            ) : (
+              <div className="divide-y">
+                {settlements.map((settlement, index) => (
+                  <div
+                    key={`${settlement.fromPersonId}-${settlement.toPersonId}`}
+                    className={cn(
+                      "flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 animate-list-item",
+                      `stagger-${(index % 4) + 1}`
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-semibold truncate max-w-[72px]">
+                        {peopleById.get(settlement.fromPersonId)?.name}
+                      </span>
+                      <div className="shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <ArrowRight className="h-3 w-3 text-primary" />
+                      </div>
+                      <span className="text-sm font-semibold truncate max-w-[72px]">
+                        {peopleById.get(settlement.toPersonId)?.name}
+                      </span>
+                    </div>
+                    <div className="shrink-0 rounded-full bg-accent/15 px-3 py-1 text-sm font-bold tabular-amount text-accent-foreground">
+                      {formatMinor(settlement.amountMinor, ledger.currency)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -579,14 +703,17 @@ function ActivityView({
       <Card>
         <CardHeader className="pb-3">
           {/* Expense / Payment segmented control */}
-          <div className="flex rounded-lg border bg-muted p-1 gap-1" aria-label="Activity type">
+          <div
+            className="flex rounded-md border border-border/60 bg-muted/60 p-1 gap-0.5"
+            aria-label="Activity type"
+          >
             <button
               type="button"
               onClick={() => setMode("expense")}
               className={cn(
-                "flex-1 rounded-md py-1.5 text-sm font-medium transition-all",
+                "flex-1 rounded-sm py-2 text-sm font-medium transition-all duration-150 min-h-[40px]",
                 mode === "expense"
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-[0_1px_3px_hsl(222_24%_10%/0.10)] font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -596,9 +723,9 @@ function ActivityView({
               type="button"
               onClick={() => setMode("payment")}
               className={cn(
-                "flex-1 rounded-md py-1.5 text-sm font-medium transition-all",
+                "flex-1 rounded-sm py-2 text-sm font-medium transition-all duration-150 min-h-[40px]",
                 mode === "payment"
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-[0_1px_3px_hsl(222_24%_10%/0.10)] font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -617,16 +744,22 @@ function ActivityView({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Activity</CardTitle>
+          <WidgetLabel color="hsl(28 90% 55%)">Activity</WidgetLabel>
         </CardHeader>
         <CardContent className="pt-0">
           {activityItems.length === 0 ? (
             <EmptyState message="No activity yet." />
           ) : (
             <div className="divide-y">
-              {activityItems.map((item) =>
+              {activityItems.map((item, index) =>
                 item.kind === "expense" ? (
-                  <div key={item.entry.id} className="py-3 first:pt-0 last:pb-0">
+                  <div
+                    key={item.entry.id}
+                    className={cn(
+                      "py-3 first:pt-0 last:pb-0 animate-list-item",
+                      `stagger-${(index % 4) + 1}`
+                    )}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <ExpenseBreakdown
                         expense={item.entry}
@@ -645,7 +778,13 @@ function ActivityView({
                     </div>
                   </div>
                 ) : (
-                  <div key={item.entry.id} className="py-3 first:pt-0 last:pb-0">
+                  <div
+                    key={item.entry.id}
+                    className={cn(
+                      "py-3 first:pt-0 last:pb-0 animate-list-item",
+                      `stagger-${(index % 4) + 1}`
+                    )}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <PaymentRow
                         payment={item.entry}
@@ -832,14 +971,17 @@ function ExpenseForm({
       {/* Split mode segmented control */}
       <div>
         <Label className="mb-2 block">Split</Label>
-        <div className="flex rounded-lg border bg-muted p-1 gap-1" aria-label="Split mode">
+        <div
+          className="flex rounded-md border border-border/60 bg-muted/60 p-1 gap-0.5"
+          aria-label="Split mode"
+        >
           <button
             type="button"
             onClick={() => setSplitMode("equal")}
             className={cn(
-              "flex-1 rounded-md py-1.5 text-sm font-medium transition-all",
+              "flex-1 rounded-sm py-2 text-sm font-medium transition-all duration-150 min-h-[40px]",
               splitMode === "equal"
-                ? "bg-card text-foreground shadow-sm"
+                ? "bg-card text-foreground shadow-[0_1px_3px_hsl(222_24%_10%/0.10)] font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -849,9 +991,9 @@ function ExpenseForm({
             type="button"
             onClick={() => setSplitMode("exact")}
             className={cn(
-              "flex-1 rounded-md py-1.5 text-sm font-medium transition-all",
+              "flex-1 rounded-sm py-2 text-sm font-medium transition-all duration-150 min-h-[40px]",
               splitMode === "exact"
-                ? "bg-card text-foreground shadow-sm"
+                ? "bg-card text-foreground shadow-[0_1px_3px_hsl(222_24%_10%/0.10)] font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -917,10 +1059,10 @@ function ExpenseForm({
                   aria-pressed={selected}
                   onClick={() => toggleParticipant(person.id)}
                   className={cn(
-                    "rounded-full px-3.5 py-1.5 text-sm font-medium transition-all border",
+                    "rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150 border min-h-[40px] active:scale-[0.97] touch-manipulation",
                     selected
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card text-foreground border-border hover:border-primary/50"
+                      ? "bg-primary text-primary-foreground border-transparent shadow-sm"
+                      : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
                   )}
                 >
                   {person.name}
@@ -957,7 +1099,7 @@ function ExpenseForm({
                         }))
                       }
                       placeholder="0.00"
-                      className="h-8 text-sm"
+                      className="h-9 text-sm"
                     />
                   ) : (
                     <div />
@@ -1166,7 +1308,7 @@ function PeopleView({
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Add person</CardTitle>
+          <WidgetLabel>Add person</WidgetLabel>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           {formError && (
@@ -1195,19 +1337,32 @@ function PeopleView({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">People</CardTitle>
+          <WidgetLabel>People</WidgetLabel>
         </CardHeader>
         <CardContent className="pt-0">
           {ledger.people.length === 0 ? (
             <EmptyState message="No people added yet." />
           ) : (
             <div className="divide-y">
-              {ledger.people.map((person) => (
+              {ledger.people.map((person, index) => (
                 <div
                   key={person.id}
-                  className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                  className={cn(
+                    "flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 animate-list-item",
+                    `stagger-${(index % 4) + 1}`
+                  )}
                 >
-                  <p className="font-medium truncate">{person.name}</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={cn(
+                        "h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold leading-none",
+                        getAvatarColor(person.name)
+                      )}
+                    >
+                      {getInitials(person.name)}
+                    </div>
+                    <p className="font-semibold text-sm truncate">{person.name}</p>
+                  </div>
                   <Button
                     aria-label={`Remove ${person.name}`}
                     size="icon"
@@ -1257,7 +1412,7 @@ function DataView({
     <div className="grid gap-4 sm:grid-cols-2">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Export</CardTitle>
+          <WidgetLabel>Export</WidgetLabel>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <p className="text-sm text-muted-foreground">
@@ -1273,7 +1428,7 @@ function DataView({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Import</CardTitle>
+          <WidgetLabel>Import</WidgetLabel>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <input
@@ -1292,8 +1447,8 @@ function DataView({
             Choose CSV
           </Button>
           {importPreview && (
-            <div className="space-y-3 rounded-lg bg-accent/10 p-3">
-              <p className="text-sm font-medium">Preview</p>
+            <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/8 p-3">
+              <p className="text-sm font-semibold">Preview</p>
               <p className="text-sm text-muted-foreground">
                 {importPreview.peopleCount} people · {importPreview.expenseCount} expenses
                 {importPreview.paymentCount > 0 && ` · ${importPreview.paymentCount} payments`}
@@ -1316,9 +1471,9 @@ function DataView({
         </CardContent>
       </Card>
 
-      <Card className="border-destructive/20 bg-destructive/5 sm:col-span-2">
+      <Card className="border-destructive/15 bg-gradient-to-br from-destructive/5 to-transparent sm:col-span-2">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Reset</CardTitle>
+          <WidgetLabel color="hsl(var(--destructive))">Reset</WidgetLabel>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <p className="text-sm text-muted-foreground">
@@ -1362,18 +1517,21 @@ function ExpenseBreakdown({
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-medium text-sm">{expense.description}</p>
+          <p className="truncate font-semibold text-sm">{expense.description}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {peopleById.get(expense.payerId)?.name ?? "Unknown"} paid{" "}
-            {formatMinor(expense.amountMinor, ledger.currency)} · {new Date(`${expense.date}T00:00:00`).toLocaleDateString()}
+            {formatMinor(expense.amountMinor, ledger.currency)} ·{" "}
+            {new Date(`${expense.date}T00:00:00`).toLocaleDateString()}
           </p>
         </div>
-        <span className={cn(
-          "rounded-full px-2 py-0.5 text-xs font-medium shrink-0",
-          expense.splitMode === "equal"
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
-        )}>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-semibold shrink-0",
+            expense.splitMode === "equal"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
           {expense.splitMode}
         </span>
       </div>
@@ -1386,7 +1544,7 @@ function ExpenseBreakdown({
             <span className="text-xs text-muted-foreground">
               {peopleById.get(split.personId)?.name ?? "Unknown"}
             </span>
-            <span className="text-xs font-medium">
+            <span className="text-xs font-semibold tabular-amount">
               {formatMinor(split.amountMinor, ledger.currency)}
             </span>
           </div>
@@ -1412,17 +1570,19 @@ function PaymentRow({
     <div className="min-w-0 flex-1">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium">
-            {fromName}
-            <ArrowRight className="inline-block mx-1.5 h-3.5 w-3.5 text-muted-foreground" />
-            {toName}
-          </p>
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            <span className="truncate max-w-[80px]">{fromName}</span>
+            <div className="shrink-0 h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <ArrowRight className="h-2.5 w-2.5 text-primary" />
+            </div>
+            <span className="truncate max-w-[80px]">{toName}</span>
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(`${payment.date}T00:00:00`).toLocaleDateString()}
             {payment.note && ` · ${payment.note}`}
           </p>
         </div>
-        <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-accent/15 text-accent-foreground shrink-0">
+        <span className="rounded-full px-2.5 py-0.5 text-xs font-bold tabular-amount bg-accent/15 text-accent-foreground shrink-0">
           {formatMinor(payment.amountMinor, ledger.currency)}
         </span>
       </div>

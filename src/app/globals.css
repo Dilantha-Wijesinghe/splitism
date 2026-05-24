@@ -3,24 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --background: 40 20% 96%;
-  --foreground: 222 24% 12%;
+  --background: 36 18% 94%;
+  --foreground: 222 24% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 222 24% 12%;
-  --primary: 174 72% 28%;
+  --card-foreground: 222 24% 10%;
+  --primary: 174 68% 24%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 211 34% 92%;
-  --secondary-foreground: 215 25% 18%;
-  --muted: 214 20% 93%;
-  --muted-foreground: 216 10% 48%;
-  --accent: 31 86% 60%;
-  --accent-foreground: 24 30% 13%;
-  --destructive: 2 75% 54%;
+  --secondary: 174 20% 92%;
+  --secondary-foreground: 174 30% 18%;
+  --muted: 36 12% 91%;
+  --muted-foreground: 218 12% 46%;
+  --accent: 28 90% 55%;
+  --accent-foreground: 24 40% 12%;
+  --destructive: 4 78% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 18% 88%;
-  --input: 214 18% 88%;
-  --ring: 174 72% 28%;
-  --radius: 0.75rem;
+  --border: 36 15% 86%;
+  --input: 36 15% 86%;
+  --ring: 174 68% 24%;
+  --radius: 0.875rem;
 }
 
 * {
@@ -33,6 +33,10 @@ html {
 
 body {
   @apply min-h-screen bg-background text-foreground antialiased;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 button,
@@ -46,4 +50,29 @@ textarea {
   .text-balance {
     text-wrap: balance;
   }
+
+  .tabular-amount {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  @keyframes fadeSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-list-item {
+    animation: fadeSlideIn 220ms ease-out both;
+  }
+
+  .stagger-1 { animation-delay: 30ms; }
+  .stagger-2 { animation-delay: 65ms; }
+  .stagger-3 { animation-delay: 100ms; }
+  .stagger-4 { animation-delay: 135ms; }
 }
