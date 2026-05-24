@@ -1,5 +1,6 @@
 export type PersonId = string;
 export type ExpenseId = string;
+export type PaymentId = string;
 export type SplitMode = "equal" | "exact";
 
 export interface Person {
@@ -24,11 +25,22 @@ export interface Expense {
   splits: ExpenseSplit[];
 }
 
+export interface Payment {
+  id: PaymentId;
+  fromPersonId: PersonId;
+  toPersonId: PersonId;
+  amountMinor: number;
+  date: string;
+  note: string;
+  createdAt: string;
+}
+
 export interface Ledger {
-  schemaVersion: 1;
+  schemaVersion: 2;
   currency: string;
   people: Person[];
   expenses: Expense[];
+  payments: Payment[];
   updatedAt: string;
 }
 

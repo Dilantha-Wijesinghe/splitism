@@ -2,6 +2,7 @@ import type {
   Expense,
   ExpenseSplit,
   Ledger,
+  Payment,
   Person,
   PersonBalance,
   Settlement
@@ -9,10 +10,11 @@ import type {
 
 export function createEmptyLedger(currency = "USD"): Ledger {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     currency,
     people: [],
     expenses: [],
+    payments: [],
     updatedAt: new Date().toISOString()
   };
 }
@@ -33,12 +35,19 @@ export function validatePersonName(name: string, people: Person[]) {
   return exists ? "That person already exists." : null;
 }
 
-export function canRemovePerson(personId: string, expenses: Expense[]) {
-  return !expenses.some(
+export function canRemovePerson(personId: string, ledger: Ledger) {
+  const inExpenses = ledger.expenses.some(
     (expense) =>
       expense.payerId === personId ||
       expense.splits.some((split) => split.personId === personId)
   );
+  if (inExpenses) return false;
+
+  const inPayments = ledger.payments.some(
+    (payment) =>
+      payment.fromPersonId === personId || payment.toPersonId === personId
+  );
+  return !inPayments;
 }
 
 export function buildEqualSplits(
@@ -97,6 +106,29 @@ export function validateExpense(expense: Expense, people: Person[]) {
   return Array.from(new Set(errors));
 }
 
+export function validatePayment(payment: Payment, people: Person[]): string[] {
+  const personIds = new Set(people.map((person) => person.id));
+  const errors: string[] = [];
+
+  if (!Number.isSafeInteger(payment.amountMinor) || payment.amountMinor <= 0) {
+    errors.push("Enter a valid amount.");
+  }
+  if (!personIds.has(payment.fromPersonId)) {
+    errors.push("Choose who is paying.");
+  }
+  if (!personIds.has(payment.toPersonId)) {
+    errors.push("Choose who receives the payment.");
+  }
+  if (payment.fromPersonId === payment.toPersonId) {
+    errors.push("The payer and receiver must be different people.");
+  }
+  if (!payment.date) {
+    errors.push("Choose a date.");
+  }
+
+  return Array.from(new Set(errors));
+}
+
 export function calculateBalances(ledger: Ledger): PersonBalance[] {
   const balances = new Map<string, PersonBalance>();
 
@@ -123,9 +155,20 @@ export function calculateBalances(ledger: Ledger): PersonBalance[] {
     }
   }
 
+  for (const payment of ledger.payments) {
+    const sender = balances.get(payment.fromPersonId);
+    if (sender) {
+      sender.netMinor += payment.amountMinor;
+    }
+    const receiver = balances.get(payment.toPersonId);
+    if (receiver) {
+      receiver.netMinor -= payment.amountMinor;
+    }
+  }
+
   return Array.from(balances.values()).map((balance) => ({
     ...balance,
-    netMinor: balance.paidMinor - balance.owedMinor
+    netMinor: balance.paidMinor - balance.owedMinor + balance.netMinor
   }));
 }
 

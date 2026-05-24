@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 import { z } from "zod";
-import type { Expense, Ledger, Person } from "@/lib/types";
+import type { Expense, Ledger, Payment, Person } from "@/lib/types";
 import { createEmptyLedger } from "@/lib/ledger";
 
 const CSV_COLUMNS = [
@@ -17,13 +17,16 @@ const CSV_COLUMNS = [
   "createdAt",
   "splitMode",
   "expenseId",
-  "personId"
+  "personId",
+  "fromPersonId",
+  "toPersonId",
+  "note"
 ];
 
 type CsvRow = Record<(typeof CSV_COLUMNS)[number], string>;
 
 const rowSchema = z.object({
-  recordType: z.enum(["metadata", "person", "expense", "split"]),
+  recordType: z.enum(["metadata", "person", "expense", "split", "payment"]),
   schemaVersion: z.string().optional().default(""),
   currency: z.string().optional().default(""),
   exportedAt: z.string().optional().default(""),
@@ -36,13 +39,17 @@ const rowSchema = z.object({
   createdAt: z.string().optional().default(""),
   splitMode: z.string().optional().default(""),
   expenseId: z.string().optional().default(""),
-  personId: z.string().optional().default("")
+  personId: z.string().optional().default(""),
+  fromPersonId: z.string().optional().default(""),
+  toPersonId: z.string().optional().default(""),
+  note: z.string().optional().default("")
 });
 
 export interface ImportPreview {
   ledger: Ledger;
   peopleCount: number;
   expenseCount: number;
+  paymentCount: number;
   totalMinor: number;
 }
 
@@ -93,6 +100,21 @@ export function exportLedgerToCsv(ledger: Ledger) {
     }
   }
 
+  for (const payment of ledger.payments) {
+    rows.push(
+      makeRow({
+        recordType: "payment",
+        id: payment.id,
+        fromPersonId: payment.fromPersonId,
+        toPersonId: payment.toPersonId,
+        amountMinor: String(payment.amountMinor),
+        date: payment.date,
+        note: payment.note,
+        createdAt: payment.createdAt
+      })
+    );
+  }
+
   return Papa.unparse(rows, { columns: CSV_COLUMNS, newline: "\n" });
 }
 
@@ -122,7 +144,7 @@ export function parseLedgerCsv(csv: string): ImportPreview {
   if (!metadata) {
     throw new Error("CSV is missing a metadata row.");
   }
-  if (metadata.schemaVersion !== "1") {
+  if (metadata.schemaVersion !== "1" && metadata.schemaVersion !== "2") {
     throw new Error("CSV schema version is not supported.");
   }
   if (!/^[A-Z]{3}$/.test(metadata.currency)) {
@@ -135,12 +157,7 @@ export function parseLedgerCsv(csv: string): ImportPreview {
       if (!row.id || !row.name || !row.createdAt) {
         throw new Error(`Person row ${index + 1} is missing required data.`);
       }
-
-      return {
-        id: row.id,
-        name: row.name,
-        createdAt: row.createdAt
-      };
+      return { id: row.id, name: row.name, createdAt: row.createdAt };
     });
 
   const personIds = new Set(people.map((person) => person.id));
@@ -182,23 +199,18 @@ export function parseLedgerCsv(csv: string): ImportPreview {
         throw new Error("An expense row has an unsupported split mode.");
       }
 
-      const amountMinor = parseInteger(row.amountMinor, "expense amount");
+      const amountMinor = parsePositiveInteger(row.amountMinor, "expense amount");
       const splits = (splitRowsByExpense.get(row.id) ?? []).map((splitRow) => ({
         personId: splitRow.personId,
-        amountMinor: parseInteger(splitRow.amountMinor, "split amount")
+        amountMinor: parseNonnegativeInteger(splitRow.amountMinor, "split amount")
       }));
-      const splitTotal = splits.reduce(
-        (total, split) => total + split.amountMinor,
-        0
-      );
+      const splitTotal = splits.reduce((total, split) => total + split.amountMinor, 0);
 
       if (splits.length === 0) {
         throw new Error(`Expense "${row.description}" has no split rows.`);
       }
       if (splitTotal !== amountMinor) {
-        throw new Error(
-          `Expense "${row.description}" split amounts do not match the total.`
-        );
+        throw new Error(`Expense "${row.description}" split amounts do not match the total.`);
       }
 
       return {
@@ -218,10 +230,43 @@ export function parseLedgerCsv(csv: string): ImportPreview {
     throw new Error("CSV contains duplicate expenses.");
   }
 
+  const payments = rows
+    .filter((row) => row.recordType === "payment")
+    .map<Payment>((row) => {
+      if (!row.id || !row.fromPersonId || !row.toPersonId || !row.amountMinor || !row.date || !row.createdAt) {
+        throw new Error("A payment row is missing required data.");
+      }
+      if (!personIds.has(row.fromPersonId)) {
+        throw new Error("A payment row references a sender that does not exist.");
+      }
+      if (!personIds.has(row.toPersonId)) {
+        throw new Error("A payment row references a receiver that does not exist.");
+      }
+      if (row.fromPersonId === row.toPersonId) {
+        throw new Error("A payment row has the same sender and receiver.");
+      }
+
+      return {
+        id: row.id,
+        fromPersonId: row.fromPersonId,
+        toPersonId: row.toPersonId,
+        amountMinor: parsePositiveInteger(row.amountMinor, "payment amount"),
+        date: row.date,
+        note: row.note,
+        createdAt: row.createdAt
+      };
+    });
+
+  const paymentIds = new Set(payments.map((p) => p.id));
+  if (paymentIds.size !== payments.length) {
+    throw new Error("CSV contains duplicate payments.");
+  }
+
   const ledger: Ledger = {
     ...createEmptyLedger(metadata.currency),
     people,
     expenses,
+    payments,
     updatedAt: new Date().toISOString()
   };
 
@@ -229,6 +274,7 @@ export function parseLedgerCsv(csv: string): ImportPreview {
     ledger,
     peopleCount: people.length,
     expenseCount: expenses.length,
+    paymentCount: payments.length,
     totalMinor: expenses.reduce((total, expense) => total + expense.amountMinor, 0)
   };
 }
@@ -239,7 +285,18 @@ function makeRow(row: Partial<CsvRow>): CsvRow {
   ) as CsvRow;
 }
 
-function parseInteger(value: string, label: string) {
+function parsePositiveInteger(value: string, label: string) {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Invalid ${label}.`);
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${label}.`);
+  }
+  return parsed;
+}
+
+function parseNonnegativeInteger(value: string, label: string) {
   if (!/^\d+$/.test(value)) {
     throw new Error(`Invalid ${label}.`);
   }

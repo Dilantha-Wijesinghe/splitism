@@ -3,7 +3,7 @@ import { exportLedgerToCsv, parseLedgerCsv } from "@/lib/csv";
 import type { Ledger } from "@/lib/types";
 
 const ledger: Ledger = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   currency: "USD",
   updatedAt: "2026-01-01T00:00:00.000Z",
   people: [
@@ -24,18 +24,102 @@ const ledger: Ledger = {
         { personId: "p2", amountMinor: 600 }
       ]
     }
-  ]
+  ],
+  payments: []
 };
 
 describe("CSV import/export", () => {
-  it("roundtrips a ledger", () => {
+  it("roundtrips a ledger without payments", () => {
     const csv = exportLedgerToCsv(ledger);
     const preview = parseLedgerCsv(csv);
 
     expect(preview.peopleCount).toBe(2);
     expect(preview.expenseCount).toBe(1);
+    expect(preview.paymentCount).toBe(0);
     expect(preview.ledger.currency).toBe("USD");
     expect(preview.ledger.expenses[0].splits).toEqual(ledger.expenses[0].splits);
+    expect(preview.ledger.payments).toEqual([]);
+  });
+
+  it("roundtrips a ledger with payments", () => {
+    const ledgerWithPayment: Ledger = {
+      ...ledger,
+      payments: [
+        {
+          id: "pay1",
+          fromPersonId: "p2",
+          toPersonId: "p1",
+          amountMinor: 600,
+          date: "2026-01-02",
+          note: "Cash",
+          createdAt: "2026-01-02T00:00:00.000Z"
+        }
+      ]
+    };
+
+    const csv = exportLedgerToCsv(ledgerWithPayment);
+    const preview = parseLedgerCsv(csv);
+
+    expect(preview.paymentCount).toBe(1);
+    const p = preview.ledger.payments[0];
+    expect(p.id).toBe("pay1");
+    expect(p.fromPersonId).toBe("p2");
+    expect(p.toPersonId).toBe("p1");
+    expect(p.amountMinor).toBe(600);
+    expect(p.note).toBe("Cash");
+  });
+
+  it("imports a v1 CSV and produces empty payments array", () => {
+    // Generate a valid v2 CSV then downgrade the schemaVersion to simulate a v1 file
+    const v1Csv = exportLedgerToCsv(ledger).replace(",2,", ",1,");
+
+    const preview = parseLedgerCsv(v1Csv);
+    expect(preview.ledger.payments).toEqual([]);
+    expect(preview.paymentCount).toBe(0);
+  });
+
+  it("rejects a payment referencing an unknown person", () => {
+    const ledgerWithBadPayment: Ledger = {
+      ...ledger,
+      payments: [
+        {
+          id: "pay1",
+          fromPersonId: "p_unknown",
+          toPersonId: "p1",
+          amountMinor: 600,
+          date: "2026-01-02",
+          note: "",
+          createdAt: "2026-01-02T00:00:00.000Z"
+        }
+      ]
+    };
+
+    const csv = exportLedgerToCsv(ledgerWithBadPayment);
+    expect(() => parseLedgerCsv(csv)).toThrow("sender that does not exist");
+  });
+
+  it("rejects a payment with the same sender and receiver", () => {
+    // Build a valid ledger with one person, then export a modified CSV where
+    // a payment has fromPersonId === toPersonId
+    const singlePersonLedger: Ledger = {
+      ...ledger,
+      payments: [
+        {
+          id: "pay1",
+          fromPersonId: "p1",
+          toPersonId: "p2",
+          amountMinor: 600,
+          date: "2026-01-02",
+          note: "",
+          createdAt: "2026-01-02T00:00:00.000Z"
+        }
+      ]
+    };
+    const csv = exportLedgerToCsv(singlePersonLedger).replace(
+      /p1,p2/,
+      "p1,p1"
+    );
+    expect(() => parseLedgerCsv(csv)).toThrow("same sender and receiver");
   });
 
   it("rejects unsupported schema versions", () => {
