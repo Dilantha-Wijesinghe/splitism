@@ -429,7 +429,7 @@ function Overview({
               "linear-gradient(135deg, hsl(174 68% 24% / 0.4), hsl(36 15% 86%), hsl(28 90% 55% / 0.2))"
           }}
         >
-          <div className="relative grid grid-cols-3 divide-x rounded-[calc(var(--radius)-1px)] overflow-hidden bg-gradient-to-b from-card to-[hsl(36_15%_98%)]">
+          <div className="relative grid grid-cols-[2fr_1fr_1fr] divide-x rounded-[calc(var(--radius)-1px)] overflow-hidden bg-gradient-to-b from-card to-[hsl(36_15%_98%)]">
             {/* Ambient glow */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
               <div className="absolute -top-10 left-1/2 -translate-x-1/2 h-24 w-48 rounded-full bg-primary/15 blur-2xl" />

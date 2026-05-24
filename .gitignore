@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# production
+dist/
+
+# testing
+coverage/
+
+# env files
+.env*
+!.env.example
+
+# typescript
+tsconfig.tsbuildinfo
+
+# system files
+.DS_Store
