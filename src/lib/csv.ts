@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 import { z } from "zod";
-import type { Expense, Ledger, Payment, Person } from "@/lib/types";
+import type { Expense, ExpensePayment, Ledger, Payment, Person } from "@/lib/types";
 import { createEmptyLedger } from "@/lib/ledger";
 
 const CSV_COLUMNS = [
@@ -26,7 +26,7 @@ const CSV_COLUMNS = [
 type CsvRow = Record<(typeof CSV_COLUMNS)[number], string>;
 
 const rowSchema = z.object({
-  recordType: z.enum(["metadata", "person", "expense", "split", "payment"]),
+  recordType: z.enum(["metadata", "person", "expense", "expensePayment", "split", "payment"]),
   schemaVersion: z.string().optional().default(""),
   currency: z.string().optional().default(""),
   exportedAt: z.string().optional().default(""),
@@ -81,12 +81,22 @@ export function exportLedgerToCsv(ledger: Ledger) {
         id: expense.id,
         description: expense.description,
         amountMinor: String(expense.amountMinor),
-        payerId: expense.payerId,
         date: expense.date,
         createdAt: expense.createdAt,
         splitMode: expense.splitMode
       })
     );
+
+    for (const payment of expense.payments) {
+      rows.push(
+        makeRow({
+          recordType: "expensePayment",
+          expenseId: expense.id,
+          personId: payment.personId,
+          amountMinor: String(payment.amountMinor)
+        })
+      );
+    }
 
     for (const split of expense.splits) {
       rows.push(
@@ -144,7 +154,8 @@ export function parseLedgerCsv(csv: string): ImportPreview {
   if (!metadata) {
     throw new Error("CSV is missing a metadata row.");
   }
-  if (metadata.schemaVersion !== "1" && metadata.schemaVersion !== "2") {
+  const schemaVersion = metadata.schemaVersion;
+  if (schemaVersion !== "1" && schemaVersion !== "2" && schemaVersion !== "3") {
     throw new Error("CSV schema version is not supported.");
   }
   if (!/^[A-Z]{3}$/.test(metadata.currency)) {
@@ -178,6 +189,19 @@ export function parseLedgerCsv(csv: string): ImportPreview {
     splitRowsByExpense.set(row.expenseId, current);
   }
 
+  const paymentRowsByExpense = new Map<string, typeof rows>();
+  for (const row of rows.filter((item) => item.recordType === "expensePayment")) {
+    if (!row.expenseId || !row.personId || !row.amountMinor) {
+      throw new Error("An expensePayment row is missing expense, person, or amount data.");
+    }
+    if (!personIds.has(row.personId)) {
+      throw new Error("An expensePayment row references a person that does not exist.");
+    }
+    const current = paymentRowsByExpense.get(row.expenseId) ?? [];
+    current.push(row);
+    paymentRowsByExpense.set(row.expenseId, current);
+  }
+
   const expenses = rows
     .filter((row) => row.recordType === "expense")
     .map<Expense>((row) => {
@@ -185,21 +209,40 @@ export function parseLedgerCsv(csv: string): ImportPreview {
         !row.id ||
         !row.description ||
         !row.amountMinor ||
-        !row.payerId ||
         !row.date ||
         !row.createdAt ||
         !row.splitMode
       ) {
         throw new Error("An expense row is missing required data.");
       }
-      if (!personIds.has(row.payerId)) {
-        throw new Error("An expense row references a payer that does not exist.");
-      }
       if (row.splitMode !== "equal" && row.splitMode !== "exact") {
         throw new Error("An expense row has an unsupported split mode.");
       }
 
       const amountMinor = parsePositiveInteger(row.amountMinor, "expense amount");
+
+      // V3: expensePayment rows. V1/V2: payerId column fallback.
+      let payments: ExpensePayment[];
+      const paymentRows = paymentRowsByExpense.get(row.id);
+      if (paymentRows && paymentRows.length > 0) {
+        payments = paymentRows.map((pr) => ({
+          personId: pr.personId,
+          amountMinor: parsePositiveInteger(pr.amountMinor, "payer amount")
+        }));
+      } else if (row.payerId) {
+        if (!personIds.has(row.payerId)) {
+          throw new Error("An expense row references a payer that does not exist.");
+        }
+        payments = [{ personId: row.payerId, amountMinor }];
+      } else {
+        throw new Error(`Expense "${row.description}" has no payer data.`);
+      }
+
+      const payerTotal = payments.reduce((t, p) => t + p.amountMinor, 0);
+      if (payerTotal !== amountMinor) {
+        throw new Error(`Expense "${row.description}" payer amounts do not match the total.`);
+      }
+
       const splits = (splitRowsByExpense.get(row.id) ?? []).map((splitRow) => ({
         personId: splitRow.personId,
         amountMinor: parseNonnegativeInteger(splitRow.amountMinor, "split amount")
@@ -217,7 +260,7 @@ export function parseLedgerCsv(csv: string): ImportPreview {
         id: row.id,
         description: row.description,
         amountMinor,
-        payerId: row.payerId,
+        payments,
         date: row.date,
         createdAt: row.createdAt,
         splitMode: row.splitMode,

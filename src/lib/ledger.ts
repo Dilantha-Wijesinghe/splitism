@@ -1,5 +1,6 @@
 import type {
   Expense,
+  ExpensePayment,
   ExpenseSplit,
   Ledger,
   Payment,
@@ -10,7 +11,7 @@ import type {
 
 export function createEmptyLedger(currency = "USD"): Ledger {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     currency,
     people: [],
     expenses: [],
@@ -38,7 +39,7 @@ export function validatePersonName(name: string, people: Person[]) {
 export function canRemovePerson(personId: string, ledger: Ledger) {
   const inExpenses = ledger.expenses.some(
     (expense) =>
-      expense.payerId === personId ||
+      expense.payments.some((p) => p.personId === personId) ||
       expense.splits.some((split) => split.personId === personId)
   );
   if (inExpenses) return false;
@@ -72,6 +73,10 @@ export function sumSplits(splits: ExpenseSplit[]) {
   return splits.reduce((total, split) => total + split.amountMinor, 0);
 }
 
+export function sumPayments(payments: ExpensePayment[]) {
+  return payments.reduce((total, payment) => total + payment.amountMinor, 0);
+}
+
 export function validateExpense(expense: Expense, people: Person[]) {
   const personIds = new Set(people.map((person) => person.id));
   const errors: string[] = [];
@@ -82,11 +87,22 @@ export function validateExpense(expense: Expense, people: Person[]) {
   if (!Number.isSafeInteger(expense.amountMinor) || expense.amountMinor <= 0) {
     errors.push("Enter a valid amount.");
   }
-  if (!personIds.has(expense.payerId)) {
-    errors.push("Choose who paid.");
-  }
   if (!expense.date) {
     errors.push("Choose a date.");
+  }
+  if (expense.payments.length === 0) {
+    errors.push("Choose who paid.");
+  }
+  for (const payment of expense.payments) {
+    if (!personIds.has(payment.personId)) {
+      errors.push("Every payer must be an existing person.");
+    }
+    if (!Number.isSafeInteger(payment.amountMinor) || payment.amountMinor <= 0) {
+      errors.push("Payer amounts must be valid.");
+    }
+  }
+  if (expense.payments.length > 0 && sumPayments(expense.payments) !== expense.amountMinor) {
+    errors.push("Payer amounts must add up to the expense total.");
   }
   if (expense.splits.length === 0) {
     errors.push("Choose at least one participant.");
@@ -142,9 +158,11 @@ export function calculateBalances(ledger: Ledger): PersonBalance[] {
   }
 
   for (const expense of ledger.expenses) {
-    const payer = balances.get(expense.payerId);
-    if (payer) {
-      payer.paidMinor += expense.amountMinor;
+    for (const payment of expense.payments) {
+      const payer = balances.get(payment.personId);
+      if (payer) {
+        payer.paidMinor += payment.amountMinor;
+      }
     }
 
     for (const split of expense.splits) {

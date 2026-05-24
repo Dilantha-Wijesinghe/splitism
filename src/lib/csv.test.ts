@@ -3,7 +3,7 @@ import { exportLedgerToCsv, parseLedgerCsv } from "@/lib/csv";
 import type { Ledger } from "@/lib/types";
 
 const ledger: Ledger = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   currency: "USD",
   updatedAt: "2026-01-01T00:00:00.000Z",
   people: [
@@ -15,7 +15,7 @@ const ledger: Ledger = {
       id: "e1",
       description: "Coffee",
       amountMinor: 1200,
-      payerId: "p1",
+      payments: [{ personId: "p1", amountMinor: 1200 }],
       date: "2026-01-01",
       createdAt: "2026-01-01T00:00:00.000Z",
       splitMode: "equal",
@@ -69,13 +69,24 @@ describe("CSV import/export", () => {
     expect(p.note).toBe("Cash");
   });
 
-  it("imports a v1 CSV and produces empty payments array", () => {
-    // Generate a valid v2 CSV then downgrade the schemaVersion to simulate a v1 file
-    const v1Csv = exportLedgerToCsv(ledger).replace(",2,", ",1,");
+  it("imports a v2 CSV with payerId column and converts to payments array", () => {
+    // columns: recordType,schemaVersion,currency,exportedAt,id,name,description,amountMinor,payerId,date,createdAt,splitMode,expenseId,personId,fromPersonId,toPersonId,note
+    const v2Csv = [
+      "recordType,schemaVersion,currency,exportedAt,id,name,description,amountMinor,payerId,date,createdAt,splitMode,expenseId,personId,fromPersonId,toPersonId,note",
+      "metadata,2,USD,2026-01-01T00:00:00.000Z,,,,,,,,,,,,,",
+      "person,,,,p1,Ari,,,,,2026-01-01T00:00:00.000Z,,,,,,",
+      "person,,,,p2,Bea,,,,,2026-01-01T00:00:00.000Z,,,,,,",
+      "expense,,,,e1,,Coffee,1200,p1,2026-01-01,2026-01-01T00:00:00.000Z,equal,,,,,",
+      "split,,,,,,,600,,,,,e1,p1,,,",
+      "split,,,,,,,600,,,,,e1,p2,,,"
+    ].join("\n");
 
-    const preview = parseLedgerCsv(v1Csv);
+    const preview = parseLedgerCsv(v2Csv);
     expect(preview.ledger.payments).toEqual([]);
     expect(preview.paymentCount).toBe(0);
+    expect(preview.ledger.expenses[0].payments).toEqual([
+      { personId: "p1", amountMinor: 1200 }
+    ]);
   });
 
   it("rejects a payment referencing an unknown person", () => {

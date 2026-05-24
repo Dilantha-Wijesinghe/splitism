@@ -9,7 +9,23 @@ const splitSchema = z.object({
   amountMinor: z.number().int().nonnegative()
 });
 
-const expenseSchema = z.object({
+const expensePaymentSchema = z.object({
+  personId: z.string().min(1),
+  amountMinor: z.number().int().positive()
+});
+
+const expenseSchemaV3 = z.object({
+  id: z.string().min(1),
+  description: z.string(),
+  amountMinor: z.number().int().positive(),
+  payments: z.array(expensePaymentSchema).min(1),
+  date: z.string().min(1),
+  createdAt: z.string().min(1),
+  splitMode: z.enum(["equal", "exact"]),
+  splits: z.array(splitSchema).min(1)
+});
+
+const expenseSchemaV2 = z.object({
   id: z.string().min(1),
   description: z.string(),
   amountMinor: z.number().int().positive(),
@@ -36,11 +52,20 @@ const personSchema = z.object({
   createdAt: z.string().min(1)
 });
 
+const ledgerSchemaV3 = z.object({
+  schemaVersion: z.literal(3),
+  currency: z.string().min(3).max(3),
+  people: z.array(personSchema),
+  expenses: z.array(expenseSchemaV3),
+  payments: z.array(paymentSchema),
+  updatedAt: z.string().min(1)
+});
+
 const ledgerSchemaV2 = z.object({
   schemaVersion: z.literal(2),
   currency: z.string().min(3).max(3),
   people: z.array(personSchema),
-  expenses: z.array(expenseSchema),
+  expenses: z.array(expenseSchemaV2),
   payments: z.array(paymentSchema),
   updatedAt: z.string().min(1)
 });
@@ -49,7 +74,7 @@ const ledgerSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   currency: z.string().min(3).max(3),
   people: z.array(personSchema),
-  expenses: z.array(expenseSchema),
+  expenses: z.array(expenseSchemaV2),
   updatedAt: z.string().min(1)
 });
 
@@ -73,17 +98,34 @@ export function loadLedger(): { ledger: Ledger; error: string | null } {
     };
   }
 
+  const v3Result = ledgerSchemaV3.safeParse(parsed);
+  if (v3Result.success) {
+    return { ledger: v3Result.data satisfies Ledger, error: null };
+  }
+
   const v2Result = ledgerSchemaV2.safeParse(parsed);
   if (v2Result.success) {
-    return { ledger: v2Result.data satisfies Ledger, error: null };
+    const migrated: Ledger = {
+      ...v2Result.data,
+      schemaVersion: 3,
+      expenses: v2Result.data.expenses.map(({ payerId, ...rest }) => ({
+        ...rest,
+        payments: [{ personId: payerId, amountMinor: rest.amountMinor }]
+      }))
+    };
+    return { ledger: migrated, error: null };
   }
 
   const v1Result = ledgerSchemaV1.safeParse(parsed);
   if (v1Result.success) {
     const migrated: Ledger = {
       ...v1Result.data,
-      schemaVersion: 2,
-      payments: []
+      schemaVersion: 3,
+      payments: [],
+      expenses: v1Result.data.expenses.map(({ payerId, ...rest }) => ({
+        ...rest,
+        payments: [{ personId: payerId, amountMinor: rest.amountMinor }]
+      }))
     };
     return { ledger: migrated, error: null };
   }

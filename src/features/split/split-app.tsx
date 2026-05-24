@@ -29,6 +29,7 @@ import {
   createEmptyLedger,
   getTotalSpent,
   normalizeName,
+  sumPayments,
   sumSplits,
   touchLedger,
   validateExpense,
@@ -821,11 +822,13 @@ function ExpenseForm({
 }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [payerId, setPayerId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [splitMode, setSplitMode] = useState<SplitMode>("equal");
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [exactAmounts, setExactAmounts] = useState<Record<string, string>>({});
+  const [payerMode, setPayerMode] = useState<"single" | "multiple">("single");
+  const [payerId, setPayerId] = useState("");
+  const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
   const amountMinor = useMemo(
@@ -843,6 +846,18 @@ function ExpenseForm({
   );
   const exactRemaining =
     splitMode === "exact" && amountMinor ? amountMinor - exactSplitTotal : null;
+
+  const payerTotal = useMemo(
+    () =>
+      ledger.people.reduce(
+        (total, person) =>
+          total + (parseMoneyToMinor(payerAmounts[person.id] ?? "", ledger.currency) ?? 0),
+        0
+      ),
+    [payerAmounts, ledger.currency, ledger.people]
+  );
+  const payerRemaining =
+    payerMode === "multiple" && amountMinor ? amountMinor - payerTotal : null;
 
   useEffect(() => {
     setParticipantIds((current) => {
@@ -869,6 +884,9 @@ function ExpenseForm({
     setSplitMode("equal");
     setParticipantIds(ledger.people.map((p) => p.id));
     setExactAmounts({});
+    setPayerMode("single");
+    setPayerId(ledger.people[0]?.id || "");
+    setPayerAmounts({});
     setFormError(null);
   }
 
@@ -899,11 +917,26 @@ function ExpenseForm({
       return;
     }
 
+    const payments =
+      payerMode === "single"
+        ? [{ personId: payerId, amountMinor }]
+        : ledger.people
+            .map((person) => ({
+              personId: person.id,
+              amountMinor: parseMoneyToMinor(payerAmounts[person.id] ?? "", ledger.currency) ?? 0
+            }))
+            .filter((p) => p.amountMinor > 0);
+
+    if (payerMode === "multiple" && sumPayments(payments) !== amountMinor) {
+      setFormError("Payer amounts must add up to the expense total.");
+      return;
+    }
+
     const expense: Expense = {
       id: createId("exp"),
       description: description.trim(),
       amountMinor,
-      payerId,
+      payments,
       date,
       createdAt: new Date().toISOString(),
       splitMode,
@@ -958,15 +991,94 @@ function ExpenseForm({
           />
         </Field>
       </div>
-      <Field label="Paid by">
-        <Select value={payerId} onValueChange={setPayerId}>
-          {ledger.people.map((person) => (
-            <SelectItem key={person.id} value={person.id}>
-              {person.name}
-            </SelectItem>
-          ))}
-        </Select>
-      </Field>
+      {/* Paid by */}
+      <div>
+        <Label className="mb-2 block">Paid by</Label>
+        <div
+          className="flex rounded-md border border-border/60 bg-muted/60 p-1 gap-0.5 mb-3"
+          aria-label="Payer mode"
+        >
+          <button
+            type="button"
+            onClick={() => setPayerMode("single")}
+            className={cn(
+              "flex-1 rounded-sm py-2 text-sm font-medium transition-all duration-150 min-h-[40px]",
+              payerMode === "single"
+                ? "bg-card text-foreground shadow-[0_1px_3px_hsl(222_24%_10%/0.10)] font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            One person
+          </button>
+          <button
+            type="button"
+            onClick={() => setPayerMode("multiple")}
+            className={cn(
+              "flex-1 rounded-sm py-2 text-sm font-medium transition-all duration-150 min-h-[40px]",
+              payerMode === "multiple"
+                ? "bg-card text-foreground shadow-[0_1px_3px_hsl(222_24%_10%/0.10)] font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Multiple people
+          </button>
+        </div>
+
+        {payerMode === "single" ? (
+          <Select value={payerId} onValueChange={setPayerId}>
+            {ledger.people.map((person) => (
+              <SelectItem key={person.id} value={person.id}>
+                {person.name}
+              </SelectItem>
+            ))}
+          </Select>
+        ) : (
+          <div className="space-y-2">
+            {payerRemaining !== null && (
+              <p
+                aria-live="polite"
+                className={cn(
+                  "rounded-lg px-3 py-2 text-sm",
+                  payerRemaining === 0
+                    ? "bg-primary/10 text-primary"
+                    : "bg-accent/15 text-accent-foreground"
+                )}
+              >
+                {payerRemaining === 0
+                  ? "Amounts match the total."
+                  : payerRemaining > 0
+                    ? `${formatMinor(payerRemaining, ledger.currency)} left to assign.`
+                    : `${formatMinor(Math.abs(payerRemaining), ledger.currency)} over the total.`}
+              </p>
+            )}
+            {ledger.people.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Add people before creating expenses.</p>
+            ) : (
+              ledger.people.map((person) => (
+                <div
+                  key={person.id}
+                  className="grid grid-cols-[1fr_120px] items-center gap-3"
+                >
+                  <span className="text-sm font-medium">{person.name}</span>
+                  <Input
+                    aria-label={`${person.name} paid amount`}
+                    inputMode="decimal"
+                    value={payerAmounts[person.id] ?? ""}
+                    onChange={(event) =>
+                      setPayerAmounts((current) => ({
+                        ...current,
+                        [person.id]: event.target.value
+                      }))
+                    }
+                    placeholder="0.00"
+                    className="h-9 text-sm"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Split mode segmented control */}
       <div>
@@ -1513,15 +1625,24 @@ function ExpenseBreakdown({
   ledger: Ledger;
   peopleById: Map<string, Person>;
 }) {
+  const payerLabel = (() => {
+    const names = expense.payments.map((p) => peopleById.get(p.personId)?.name ?? "Unknown");
+    if (names.length === 1) {
+      return `${names[0]} paid ${formatMinor(expense.amountMinor, ledger.currency)}`;
+    }
+    if (names.length === 2) {
+      return `${names[0]} & ${names[1]} paid`;
+    }
+    return `${names[0]} +${names.length - 1} others paid`;
+  })();
+
   return (
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-semibold text-sm">{expense.description}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {peopleById.get(expense.payerId)?.name ?? "Unknown"} paid{" "}
-            {formatMinor(expense.amountMinor, ledger.currency)} ·{" "}
-            {new Date(`${expense.date}T00:00:00`).toLocaleDateString()}
+            {payerLabel} · {new Date(`${expense.date}T00:00:00`).toLocaleDateString()}
           </p>
         </div>
         <span
@@ -1535,6 +1656,26 @@ function ExpenseBreakdown({
           {expense.splitMode}
         </span>
       </div>
+      {expense.payments.length > 1 && (
+        <div className="mt-2 space-y-1 pb-1.5 border-b border-border/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            Paid by
+          </p>
+          {expense.payments.map((payment) => (
+            <div
+              key={`${expense.id}-pay-${payment.personId}`}
+              className="flex items-center justify-between gap-3"
+            >
+              <span className="text-xs text-muted-foreground">
+                {peopleById.get(payment.personId)?.name ?? "Unknown"}
+              </span>
+              <span className="text-xs font-semibold tabular-amount">
+                {formatMinor(payment.amountMinor, ledger.currency)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mt-2 space-y-1">
         {expense.splits.map((split) => (
           <div

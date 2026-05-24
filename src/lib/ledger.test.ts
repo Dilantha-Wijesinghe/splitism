@@ -14,7 +14,7 @@ const people = [
 ];
 
 const baseLedger: Ledger = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   currency: "USD",
   people,
   updatedAt: "2026-01-01T00:00:00.000Z",
@@ -39,7 +39,7 @@ describe("ledger calculations", () => {
           id: "e1",
           description: "Dinner",
           amountMinor: 9000,
-          payerId: "p1",
+          payments: [{ personId: "p1", amountMinor: 9000 }],
           date: "2026-01-01",
           createdAt: "2026-01-01T00:00:00.000Z",
           splitMode: "equal",
@@ -68,7 +68,7 @@ describe("ledger calculations", () => {
           id: "e1",
           description: "Cake",
           amountMinor: 540000,
-          payerId: "p1",
+          payments: [{ personId: "p1", amountMinor: 540000 }],
           date: "2026-05-24",
           createdAt: "2026-05-24T00:00:00.000Z",
           splitMode: "equal",
@@ -106,7 +106,7 @@ describe("ledger calculations", () => {
           id: "e1",
           description: "Cake",
           amountMinor: 540000,
-          payerId: "p1",
+          payments: [{ personId: "p1", amountMinor: 540000 }],
           date: "2026-05-24",
           createdAt: "2026-05-24T00:00:00.000Z",
           splitMode: "equal",

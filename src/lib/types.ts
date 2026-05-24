@@ -14,11 +14,16 @@ export interface ExpenseSplit {
   amountMinor: number;
 }
 
+export interface ExpensePayment {
+  personId: PersonId;
+  amountMinor: number;
+}
+
 export interface Expense {
   id: ExpenseId;
   description: string;
   amountMinor: number;
-  payerId: PersonId;
+  payments: ExpensePayment[];
   date: string;
   createdAt: string;
   splitMode: SplitMode;
@@ -36,7 +41,7 @@ export interface Payment {
 }
 
 export interface Ledger {
-  schemaVersion: 2;
+  schemaVersion: 3;
   currency: string;
   people: Person[];
   expenses: Expense[];
