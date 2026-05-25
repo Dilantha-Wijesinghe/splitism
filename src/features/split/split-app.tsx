@@ -136,6 +136,11 @@ export function SplitApp() {
       return;
     }
 
+    if (!file.name.endsWith(".csv") && !file.type.includes("text/csv")) {
+      setError("Please select a valid CSV file.");
+      return;
+    }
+
     try {
       const text = await file.text();
       const preview = parseLedgerCsv(text);

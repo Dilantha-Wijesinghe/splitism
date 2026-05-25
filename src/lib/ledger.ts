@@ -160,28 +160,24 @@ export function calculateBalances(ledger: Ledger): PersonBalance[] {
   for (const expense of ledger.expenses) {
     for (const payment of expense.payments) {
       const payer = balances.get(payment.personId);
-      if (payer) {
-        payer.paidMinor += payment.amountMinor;
-      }
+      if (!payer) throw new Error(`Person ${payment.personId} not found in balances`);
+      payer.paidMinor += payment.amountMinor;
     }
 
     for (const split of expense.splits) {
       const participant = balances.get(split.personId);
-      if (participant) {
-        participant.owedMinor += split.amountMinor;
-      }
+      if (!participant) throw new Error(`Person ${split.personId} not found in balances`);
+      participant.owedMinor += split.amountMinor;
     }
   }
 
   for (const payment of ledger.payments) {
     const sender = balances.get(payment.fromPersonId);
-    if (sender) {
-      sender.netMinor += payment.amountMinor;
-    }
+    if (!sender) throw new Error(`Person ${payment.fromPersonId} not found in balances`);
+    sender.netMinor += payment.amountMinor;
     const receiver = balances.get(payment.toPersonId);
-    if (receiver) {
-      receiver.netMinor -= payment.amountMinor;
-    }
+    if (!receiver) throw new Error(`Person ${payment.toPersonId} not found in balances`);
+    receiver.netMinor -= payment.amountMinor;
   }
 
   return Array.from(balances.values()).map((balance) => ({

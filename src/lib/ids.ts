@@ -3,7 +3,7 @@ export function createId(prefix: string) {
     return `${prefix}_${crypto.randomUUID()}`;
   }
 
-  return `${prefix}_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  const rand = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `${prefix}_${Date.now().toString(36)}_${rand}`;
 }

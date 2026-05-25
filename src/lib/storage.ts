@@ -16,7 +16,7 @@ const expensePaymentSchema = z.object({
 
 const expenseSchemaV3 = z.object({
   id: z.string().min(1),
-  description: z.string(),
+  description: z.string().max(500),
   amountMinor: z.number().int().positive(),
   payments: z.array(expensePaymentSchema).min(1),
   date: z.string().min(1),
@@ -27,7 +27,7 @@ const expenseSchemaV3 = z.object({
 
 const expenseSchemaV2 = z.object({
   id: z.string().min(1),
-  description: z.string(),
+  description: z.string().max(500),
   amountMinor: z.number().int().positive(),
   payerId: z.string().min(1),
   date: z.string().min(1),
@@ -42,13 +42,13 @@ const paymentSchema = z.object({
   toPersonId: z.string().min(1),
   amountMinor: z.number().int().positive(),
   date: z.string().min(1),
-  note: z.string(),
+  note: z.string().max(500),
   createdAt: z.string().min(1)
 });
 
 const personSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1),
+  name: z.string().min(1).max(100),
   createdAt: z.string().min(1)
 });
 

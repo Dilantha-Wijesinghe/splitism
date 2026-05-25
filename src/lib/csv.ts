@@ -53,6 +53,10 @@ export interface ImportPreview {
   totalMinor: number;
 }
 
+function sanitizeCsvField(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `\t${value}` : value;
+}
+
 export function exportLedgerToCsv(ledger: Ledger) {
   const rows: CsvRow[] = [
     makeRow({
@@ -68,7 +72,7 @@ export function exportLedgerToCsv(ledger: Ledger) {
       makeRow({
         recordType: "person",
         id: person.id,
-        name: person.name,
+        name: sanitizeCsvField(person.name),
         createdAt: person.createdAt
       })
     );
@@ -79,7 +83,7 @@ export function exportLedgerToCsv(ledger: Ledger) {
       makeRow({
         recordType: "expense",
         id: expense.id,
-        description: expense.description,
+        description: sanitizeCsvField(expense.description),
         amountMinor: String(expense.amountMinor),
         date: expense.date,
         createdAt: expense.createdAt,
@@ -119,7 +123,7 @@ export function exportLedgerToCsv(ledger: Ledger) {
         toPersonId: payment.toPersonId,
         amountMinor: String(payment.amountMinor),
         date: payment.date,
-        note: payment.note,
+        note: sanitizeCsvField(payment.note),
         createdAt: payment.createdAt
       })
     );
