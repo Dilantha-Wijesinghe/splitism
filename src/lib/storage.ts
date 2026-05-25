@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { Ledger } from "@/lib/types";
 import { createEmptyLedger } from "@/lib/ledger";
 
-const STORAGE_KEY = "split.ledger.v1";
+const STORAGE_KEY = "splitism.ledger.v1";
+const LEGACY_STORAGE_KEY = "split.ledger.v1";
 
 const splitSchema = z.object({
   personId: z.string().min(1),
@@ -83,7 +84,15 @@ export function loadLedger(): { ledger: Ledger; error: string | null } {
     return { ledger: createEmptyLedger(), error: null };
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  let raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      window.localStorage.setItem(STORAGE_KEY, legacy);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      raw = legacy;
+    }
+  }
   if (!raw) {
     return { ledger: createEmptyLedger(), error: null };
   }

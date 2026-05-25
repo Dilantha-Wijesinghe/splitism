@@ -1,0 +1,38 @@
+name: Feature Request
+description: Suggest an improvement or new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, check [docs/PRD.md](../docs/PRD.md) to see if your idea is already in scope or explicitly out of scope.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation or workflow that is currently frustrating or missing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you'd like to see. Mockups or examples are welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you considered, and why you prefer the proposed one.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This feature does not require a backend, accounts, or cloud storage
+        - label: This feature works within a single-ledger model

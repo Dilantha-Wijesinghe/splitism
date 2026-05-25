@@ -1,7 +1,7 @@
-# Split PRD
+# Splitism PRD
 
 ## Overview
-Split is a private, frontend-only expense splitting web app for small groups who need a simple way to track shared costs and settle up. It is inspired by Splitwise, but v1 is intentionally focused on a single ledger with clear calculations, CSV backup/restore, and a mobile-first experience.
+Splitism is a private, frontend-only expense splitting web app for small groups who need a simple way to track shared costs and settle up. It is inspired by Splitwise, but v1 is intentionally focused on a single ledger with clear calculations, CSV backup/restore, and a mobile-first experience.
 
 ## Goals
 - Let users add people, expenses, payers, and participants quickly on mobile.

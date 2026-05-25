@@ -1,5 +1,5 @@
-import { SplitApp } from "@/features/split/split-app";
+import { SplitismApp } from "@/features/splitism/splitism-app";
 
 export default function Home() {
-  return <SplitApp />;
+  return <SplitismApp />;
 }

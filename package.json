@@ -1,8 +1,21 @@
 {
-  "name": "split",
+  "name": "splitism",
   "version": "0.1.0",
-  "private": true,
+  "description": "A private, frontend-only expense splitting app for small groups.",
   "type": "module",
+  "license": "MIT",
+  "author": "Dilantha Wijesinghe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dilantha-Wijesinghe/splitism.git"
+  },
+  "keywords": [
+    "expense-splitting",
+    "splitwise",
+    "personal-finance",
+    "nextjs",
+    "offline-first"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
