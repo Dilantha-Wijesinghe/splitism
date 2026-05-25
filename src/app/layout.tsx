@@ -17,8 +17,8 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Split",
-  description: "A private, frontend-only expense splitting app."
+  title: "Splitism",
+  description: "A private, frontend-only expense splitting app for small groups."
 };
 
 export const viewport: Viewport = {

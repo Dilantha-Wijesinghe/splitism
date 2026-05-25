@@ -76,7 +76,7 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-export function SplitApp() {
+export function SplitismApp() {
   const [ledger, setLedger] = useState<Ledger>(() => createEmptyLedger());
   const [view, setView] = useState<View>("overview");
   const [hydrated, setHydrated] = useState(false);
@@ -122,7 +122,7 @@ export function SplitApp() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `split-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = `splitism-${new Date().toISOString().slice(0, 10)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
     setNotice("CSV exported.");
@@ -189,7 +189,7 @@ export function SplitApp() {
                   "linear-gradient(135deg, hsl(174 68% 24%), hsl(174 55% 36%))"
               }}
             >
-              split
+              splitism.
             </span>
           </h1>
           <div className="flex items-center gap-2">
@@ -545,7 +545,7 @@ function Overview({
                           balance.netMinor > 0 && "bg-primary/10 text-primary",
                           balance.netMinor < 0 && "bg-destructive/10 text-destructive",
                           balance.netMinor === 0 &&
-                            "bg-muted text-muted-foreground text-xs font-semibold"
+                          "bg-muted text-muted-foreground text-xs font-semibold"
                         )}
                       >
                         <BalanceStatus
@@ -913,9 +913,9 @@ function ExpenseForm({
       splitMode === "equal"
         ? buildEqualSplits(amountMinor, participantIds)
         : participantIds.map((personId) => ({
-            personId,
-            amountMinor: parseMoneyToMinor(exactAmounts[personId] ?? "", ledger.currency) ?? 0
-          }));
+          personId,
+          amountMinor: parseMoneyToMinor(exactAmounts[personId] ?? "", ledger.currency) ?? 0
+        }));
 
     if (splitMode === "exact" && sumSplits(splits) !== amountMinor) {
       setFormError("Exact split amounts must add up to the expense total.");
@@ -926,11 +926,11 @@ function ExpenseForm({
       payerMode === "single"
         ? [{ personId: payerId, amountMinor }]
         : ledger.people
-            .map((person) => ({
-              personId: person.id,
-              amountMinor: parseMoneyToMinor(payerAmounts[person.id] ?? "", ledger.currency) ?? 0
-            }))
-            .filter((p) => p.amountMinor > 0);
+          .map((person) => ({
+            personId: person.id,
+            amountMinor: parseMoneyToMinor(payerAmounts[person.id] ?? "", ledger.currency) ?? 0
+          }))
+          .filter((p) => p.amountMinor > 0);
 
     if (payerMode === "multiple" && sumPayments(payments) !== amountMinor) {
       setFormError("Payer amounts must add up to the expense total.");
@@ -1747,8 +1747,8 @@ function Field({
   const child =
     React.isValidElement<{ id?: string }>(children)
       ? React.cloneElement(children, {
-          id: children.props.id ?? generatedId
-        })
+        id: children.props.id ?? generatedId
+      })
       : children;
   const fieldId =
     React.isValidElement<{ id?: string }>(child) ? child.props.id : generatedId;
