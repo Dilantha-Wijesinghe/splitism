@@ -46,6 +46,14 @@ textarea {
   font: inherit;
 }
 
+/* Prevent iOS native date/time inputs from overflowing their containers */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  max-width: 100%;
+  min-width: 0;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
