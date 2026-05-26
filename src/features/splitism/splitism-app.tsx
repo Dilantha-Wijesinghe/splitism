@@ -979,7 +979,7 @@ function ExpenseForm({
           placeholder="Dinner, taxi, groceries"
         />
       </Field>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label={`Amount (${ledger.currency})`}>
           <Input
             inputMode="decimal"
@@ -1343,7 +1343,7 @@ function PaymentForm({
         </Field>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label={`Amount (${ledger.currency})`}>
           <Input
             inputMode="decimal"
